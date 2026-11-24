@@ -155,6 +155,12 @@ class App {
     // Load pool from local cache; on first visit it starts clean with 0 pre-set champions
     this.userPool = this.dataService.getUserPool(this.currentRole);
 
+    // Hide "Aggiorna Dati" button when not running on localhost (e.g. GitHub Pages)
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (!isLocalhost && this.dom.btnUpdateData) {
+      this.dom.btnUpdateData.style.display = 'none';
+    }
+
     // Setup event listeners
     this.setupEvents();
 
