@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lol Matchup Analyzer - Champion Pool Maker</title>
+  <link rel="stylesheet" href="app.css">
+  <link rel="icon" href="logo.png">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand-title">
+        <div class="brand-icon">
+          <img src="logo.png" alt="LoL Matchup Analyzer Logo" class="brand-logo-img">
+        </div>
+        <div class="brand-text">
+          <h1>LoL Matchup Analyzer</h1>
+          <div class="brand-subtitle">
+            <span>Analisi Matchup &amp; Copertura Pool</span>
+            <span class="badge-ugg">Patch 16.23 • Emerald+</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls: Lane & Elo -->
+      <div class="controls-bar">
+        <div class="lane-selector" id="laneSelector">
+          <button class="lane-btn active" data-role="top">Top</button>
+          <button class="lane-btn" data-role="jungle">Jungle</button>
+          <button class="lane-btn" data-role="mid">Mid</button>
+          <button class="lane-btn" data-role="adc">ADC</button>
+          <button class="lane-btn" data-role="supp">Support</button>
+        </div>
+
+        <div class="elo-selector">
+          <select id="eloSelect" title="Seleziona l'Elo di riferimento">
+            <option value="17" selected>Rank: Emerald+ (Competitivo)</option>
+            <option value="11">Rank: Diamond+</option>
+            <option value="12">Rank: Master+</option>
+            <option value="10">Rank: Platinum+</option>
+            <option value="8">Rank: Tutti i Livelli (Overall)</option>
+          </select>
+        </div>
+
+        <div class="lang-selector" id="langSelector" title="Lingua / Language">
+          <button class="lang-btn" data-lang="it">IT</button>
+          <button class="lang-btn" data-lang="en">EN</button>
+        </div>
+
+        <button class="btn-tutorial" id="btnOpenTutorial" title="Guida rapida e introduzione al sito">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <span>Guida</span>
+        </button>
+
+        <button class="btn-update-data" id="btnUpdateData" title="Aggiorna i dati matchup in background senza interrompere la navigazione">
+          <svg class="update-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+          <span class="btn-update-text">Aggiorna Dati</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Background Update Progress Notification Banner -->
+    <div class="update-progress-banner" id="updateProgressBanner" style="display: none;">
+      <div class="progress-banner-inner">
+        <div class="progress-banner-top">
+          <div class="progress-title-group">
+            <span class="update-pulse-dot"></span>
+            <span class="progress-title" id="progressTitle">Aggiornamento Dati in Background</span>
+          </div>
+          <div class="progress-meta">
+            <span class="progress-percentage" id="progressPercent">0%</span>
+            <button class="progress-dismiss-btn" id="progressDismissBtn" title="Nascondi barra">&times;</button>
+          </div>
+        </div>
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="progressBarFill" style="width: 0%;"></div>
+        </div>
+        <div class="progress-status-desc" id="progressStatusDesc">In attesa di avvio...</div>
+      </div>
+    </div>
+
+    <!-- Coverage & Blind Spots Dashboard -->
+    <section class="coverage-dashboard" id="coverageDashboard">
+      <div class="coverage-gauge-box">
+        <!-- Copertura Base (1+ Pick) -->
+        <div class="gauge-item">
+          <div class="gauge-circle" id="gaugeCircle" style="--coverage-pct: 85;">
+            <div class="gauge-val" id="gaugeVal">85%</div>
+          </div>
+          <div class="gauge-details">
+            <h3 id="coverageTitle">Copertura Matchup</h3>
+            <p id="coverageStats">42 coperti • 7 scoperti</p>
+          </div>
+        </div>
+
+        <div class="gauge-sep-h"></div>
+
+        <!-- Copertura Doppia (2+ Pick Anti-Ban) -->
+        <div class="gauge-item">
+          <div class="gauge-circle double-gauge" id="doubleGaugeCircle" style="--coverage-pct: 65;">
+            <div class="gauge-val" id="doubleGaugeVal">65%</div>
+          </div>
+          <div class="gauge-details">
+            <h3 id="doubleCoverageTitle">Copertura Doppia</h3>
+            <p id="doubleCoverageStats">38 con 2° pick anti-ban</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="blind-spots-box">
+        <div class="blind-spots-header">
+          <div class="blind-spots-tabs">
+            <button class="blind-tab-btn active" id="tabUncoveredSingle" data-mode="uncovered">
+              <span>Senza Copertura (<span id="uncoveredCountBadge">0</span>)</span>
+            </button>
+            <button class="blind-tab-btn" id="tabUncoveredDouble" data-mode="uncovered_double">
+              <span>Senza Doppia Copertura (<span id="uncoveredDoubleCountBadge">0</span>)</span>
+            </button>
+          </div>
+          <button class="filter-uncovered-btn" id="filterUncoveredBtn">
+            Filtra Tabella
+          </button>
+        </div>
+        <div class="uncovered-chips" id="uncoveredChips">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Smart Recommendations to patch blind spots (Scrollable Best List) -->
+      <div class="recommendation-box" id="recommendationBox">
+        <div class="recom-header">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <span class="recom-header-title">Suggerimenti per il Pool</span>
+            <span class="recom-header-badge" id="recomCountBadge">Migliori in Ordine</span>
+          </div>
+        </div>
+        <div class="recom-content" id="recomContent">
+          <!-- Populated dynamically with full scrollable ranked list -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Quick Pick Assistant (Champion Select Helper) -->
+    <section class="quick-pick-section">
+      <div class="quick-pick-label">
+        <span>Quick Pick Draft:</span>
+      </div>
+      <div class="quick-pick-search">
+        <input 
+          type="text" 
+          id="quickPickInput" 
+          class="quick-pick-input" 
+          placeholder="L'avversario ha scelto... (es. Darius, Jax, Camille)"
+          list="opponentsDatalist"
+        >
+        <datalist id="opponentsDatalist"></datalist>
+      </div>
+      <div class="quick-pick-result" id="quickPickResult" style="display: none;">
+        <!-- Populated on selection -->
+      </div>
+    </section>
+
+    <!-- Champion Pool Management Bar -->
+    <section class="pool-manager-bar">
+      <div class="pool-title-group">
+        <span class="pool-title">Il Tuo Pool (Riga Superiore)</span>
+        <span class="pool-count" id="poolCount">5 Campioni</span>
+      </div>
+
+      <div class="pool-champions-list" id="poolChampionsList">
+        <!-- Pool champion cards populated dynamically -->
+      </div>
+
+      <div class="pool-actions">
+        <button class="btn-load-fav" id="btnLoadFavorites" title="Imposta immediatamente i tuoi campioni preferiti salvati per questa corsia">
+          <span>Imposta Preferiti</span>
+        </button>
+        <button class="btn-fav-pool" id="btnSaveFavorites" title="Salva in modo persistente la selezione attuale come preferita per questa corsia">
+          <span>Salva nei Preferiti</span>
+        </button>
+        <button class="btn-add-pool" id="btnAddPool">
+          <span>Aggiungi Campione</span>
+        </button>
+        <button class="btn-clear-pool" id="btnClearPool" title="Rimuovi tutti i campioni dal pool attuale per comporne uno nuovo rapidamente">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
+          <span>Svuota Pool</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Search & Filter Bar for Table -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 16px; flex-wrap: wrap;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 14px; font-weight: 700; color: var(--text-gold);">Tabella Matchup a Doppia Entrata</span>
+        <span style="font-size: 12px; color: var(--text-muted);">(Incrocio: Winrate del tuo campione sopra CONTRO il campione avversario di lato)</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="position: relative; width: 220px;">
+          <input 
+            type="text" 
+            id="tableSearchInput" 
+            class="quick-pick-input" 
+            placeholder="Cerca avversario..."
+            style="padding: 6px 12px; font-size: 13px;"
+          >
+        </div>
+        <select id="tableSortSelect" class="sort-select" title="Ordina campioni avversari (sinistra)" style="background: rgba(1, 10, 19, 0.85); border: 1px solid var(--border-gold); color: var(--text-gold); border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer;">
+          <option value="name_asc" selected>Ordina: Alfabetico (A-Z)</option>
+          <option value="name_desc">Ordina: Alfabetico (Z-A)</option>
+          <option value="meta_tier">Ordina: Popolarità Meta</option>
+          <option value="winrate_asc">Ordina: Matchup più ostici</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Double-Entry Matrix Table -->
+    <div class="matrix-container" id="matrixContainer">
+      <table class="matrix-table" id="matrixTable">
+        <thead>
+          <tr id="matrixHeaderRow">
+            <th class="corner-header">
+              <div style="font-size: 11px; text-transform: uppercase; color: var(--border-gold); margin-bottom: 4px;">Avversario (A-Z) ↓</div>
+              <div style="font-size: 11px; text-transform: uppercase; color: var(--teal-accent);">I tuoi Campioni (Colonna) →</div>
+            </th>
+            <!-- Dynamic pool champion columns -->
+          </tr>
+        </thead>
+        <tbody id="matrixBody">
+          <!-- Dynamic opponent rows -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal for Adding Champions to Pool -->
+  <div class="modal-overlay" id="addPoolModal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Aggiungi Campione al Pool</h2>
+        <button class="modal-close" id="modalCloseBtn">&times;</button>
+      </div>
+      <div class="modal-search-bar">
+        <input 
+          type="text" 
+          id="modalSearchInput" 
+          class="modal-search-input" 
+          placeholder="Cerca campione per nome (es. Ahri, Zed, Sylas)..."
+        >
+      </div>
+      <div class="modal-champ-grid" id="modalChampGrid">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Hover Tooltip for Matchup Stats -->
+  <div class="detail-tooltip" id="detailTooltip">
+    <div class="tooltip-title" id="tooltipTitle">Matchup</div>
+    <div class="tooltip-row">
+      <span>Winrate:</span>
+      <span id="tooltipWinrate" style="font-weight: 700;">52.0%</span>
+    </div>
+    <div class="tooltip-row">
+      <span>Partite analizzate:</span>
+      <span id="tooltipMatches">1,240</span>
+    </div>
+    <div class="tooltip-row">
+      <span>± Gold @ 15m:</span>
+      <span id="tooltipGold">+340</span>
+    </div>
+    <div class="tooltip-row">
+      <span>± CS @ 15m:</span>
+      <span id="tooltipCs">+4.2</span>
+    </div>
+    <div class="tooltip-row">
+      <span>± XP @ 15m:</span>
+      <span id="tooltipXp">+120</span>
+    </div>
+    <div class="tooltip-youtube-hint">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
+      <span>Clicca per cercare il video su YouTube</span>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast-notification" id="toastNotification"></div>
+
+  <!-- Admin Authentication & Password Change Modal -->
+  <div class="admin-modal" id="adminModal" style="display: none;">
+    <div class="admin-modal-backdrop" id="adminModalBackdrop"></div>
+    <div class="admin-modal-card">
+      <div class="admin-modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <h3 class="admin-modal-title" id="adminModalTitle">Accesso Amministratore</h3>
+        </div>
+        <button class="modal-close" id="adminModalCloseBtn">&times;</button>
+      </div>
+
+      <!-- View 1: Enter Password to Start Update -->
+      <div class="admin-view" id="adminLoginView">
+        <p class="admin-modal-desc">Inserisci la password di amministrazione per avviare l'aggiornamento dei dati matchup.</p>
+        <div class="admin-field-group">
+          <label class="admin-field-label" for="adminPasswordInput">Password Admin</label>
+          <div class="admin-input-wrap">
+            <input type="password" id="adminPasswordInput" class="admin-input" placeholder="Password" autocomplete="current-password">
+            <button type="button" class="btn-toggle-eye" id="btnToggleAdminEye" title="Mostra/Nascondi password">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </div>
+          <div class="admin-error-msg" id="adminLoginError" style="display: none;"></div>
+        </div>
+        <div class="admin-modal-actions">
+          <button class="btn-admin-cancel" id="btnCancelAdminLogin">Annulla</button>
+          <button class="btn-admin-submit" id="btnSubmitAdminLogin">Avvia Aggiornamento</button>
+        </div>
+        <div class="admin-modal-footer">
+          <button type="button" class="btn-link-action" id="btnSwitchToChangePwd">Modifica Password Admin</button>
+        </div>
+      </div>
+
+      <!-- View 2: Change Password -->
+      <div class="admin-view" id="adminChangePwdView" style="display: none;">
+        <p class="admin-modal-desc">Modifica la password richiesta per avviare il refresh dei dati.</p>
+        <div class="admin-field-group">
+          <label class="admin-field-label" for="adminOldPwdInput">Password Attuale</label>
+          <input type="password" id="adminOldPwdInput" class="admin-input" placeholder="Password attuale">
+        </div>
+        <div class="admin-field-group">
+          <label class="admin-field-label" for="adminNewPwdInput">Nuova Password</label>
+          <input type="password" id="adminNewPwdInput" class="admin-input" placeholder="Nuova password (min. 3 caratteri)">
+        </div>
+        <div class="admin-field-group">
+          <label class="admin-field-label" for="adminConfirmPwdInput">Conferma Nuova Password</label>
+          <input type="password" id="adminConfirmPwdInput" class="admin-input" placeholder="Ripeti nuova password">
+          <div class="admin-error-msg" id="adminChangePwdError" style="display: none;"></div>
+        </div>
+        <div class="admin-modal-actions">
+          <button class="btn-admin-cancel" id="btnBackToLoginView">Indietro</button>
+          <button class="btn-admin-submit" id="btnSubmitChangePwd">Salva Nuova Password</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Mini Tutorial / Walkthrough -->
+  <div class="tutorial-overlay" id="tutorialOverlay" style="display: none;">
+    <div class="tutorial-spotlight" id="tutorialSpotlight" style="display: none;"></div>
+    <div class="tutorial-card" id="tutorialCard">
+      <div class="tutorial-card-header">
+        <span class="tutorial-step-badge" id="tutorialStepBadge">Guida Rapida • 1 di 5</span>
+        <button class="tutorial-close-btn" id="tutorialCloseBtn" title="Chiudi tutorial">&times;</button>
+      </div>
+      <div class="tutorial-body">
+        <h3 class="tutorial-title" id="tutorialTitle">Benvenuto in LoL Matchup Analyzer</h3>
+        <p class="tutorial-text" id="tutorialText">
+          Questo strumento analizza in tempo reale i dati competitivi di League of Legends per calcolare la copertura del tuo Champion Pool, trovare i tuoi blind spot e suggerirti i pick anti-ban migliori.
+        </p>
+      </div>
+      <div class="tutorial-footer">
+        <div class="tutorial-dots" id="tutorialDots">
+          <span class="tutorial-dot active"></span>
+          <span class="tutorial-dot"></span>
+          <span class="tutorial-dot"></span>
+          <span class="tutorial-dot"></span>
+          <span class="tutorial-dot"></span>
+        </div>
+        <div class="tutorial-btn-group">
+          <button class="tutorial-btn tutorial-btn-prev" id="tutorialPrevBtn" style="display: none;">Indietro</button>
+          <button class="tutorial-btn tutorial-btn-next" id="tutorialNextBtn">Avanti</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Logic Scripts -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>
