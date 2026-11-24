@@ -170,8 +170,10 @@ class App {
     // Initial render
     this.render();
 
-    // Check if background update was running
-    this.checkBackgroundUpdateStatus();
+    // Check if background update was running (only on localhost)
+    if (isLocalhost) {
+      this.checkBackgroundUpdateStatus();
+    }
 
     // Launch tutorial on first visit if not yet completed
     this.checkTutorial();

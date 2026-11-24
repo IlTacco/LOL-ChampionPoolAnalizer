@@ -1,20 +1,9 @@
-<<<<<<< HEAD
 ﻿{
     "current":  "",
-    "message":  "Aggiornamento completato con successo! Tutti i dati sono sincronizzati.",
-    "timestamp":  1795547058,
-    "total":  59,
-    "done":  59,
-    "percent":  100,
-    "status":  "completed"
-=======
-﻿{
-    "current":  "",
-    "message":  "Aggiornamento completato con successo! Tutti i dati sono sincronizzati.",
-    "timestamp":  1795547058,
-    "total":  59,
-    "done":  59,
-    "percent":  100,
-    "status":  "completed"
->>>>>>> d0267c9eefecf439e05a730a7f2e425780672f04
+    "message":  "Errore durante l\u0027aggiornamento: Primitiva JSON non valida: .",
+    "timestamp":  1795563747,
+    "total":  0,
+    "done":  0,
+    "percent":  0,
+    "status":  "error"
 }
