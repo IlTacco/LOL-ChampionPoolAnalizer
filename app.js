@@ -12,7 +12,12 @@ class App {
     this.engine = new MatchupEngine(this.dataService);
 
     this.currentLang = detectDefaultLanguage();
-    this.currentRole = 'top';
+    try {
+      const savedRole = localStorage.getItem('lol_user_role');
+      this.currentRole = ['top', 'jungle', 'mid', 'adc', 'supp'].includes(savedRole) ? savedRole : 'top';
+    } catch (e) {
+      this.currentRole = 'top';
+    }
     try {
       this.currentRank = localStorage.getItem('lol_user_rank') || '17';
     } catch (e) {
@@ -152,6 +157,13 @@ class App {
     }
     this.dataService.currentRank = this.currentRank;
 
+    // Sync saved role button active state
+    if (this.dom.laneBtns) {
+      this.dom.laneBtns.forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-role') === this.currentRole);
+      });
+    }
+
     // Load pool from local cache; on first visit it starts clean with 0 pre-set champions
     this.userPool = this.dataService.getUserPool(this.currentRole);
 
@@ -204,6 +216,9 @@ class App {
         this.dom.laneBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         this.currentRole = role;
+        try {
+          localStorage.setItem('lol_user_role', role);
+        } catch (e) {}
         this.loadPoolForRole(role);
         this.render();
       });
