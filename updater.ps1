@@ -81,20 +81,21 @@ try {
                     }
                     $champRankObj = $champObj.$rankId
 
-                    $compactArr = @()
+                    $roleDict = New-Object PSObject
                     foreach ($m in $res.data.counters) {
                         $play = [int]$m.play
                         $win = [int]$m.win
                         if ($play -gt 0) {
                             $wr = [math]::Round(($win / $play) * 100.0, 2)
-                            $compactArr += ,@([int]$m.champion_id, $wr, $play, 0, 0, 0)
+                            $oppKey = [string]$m.champion_id
+                            $roleDict | Add-Member -MemberType NoteProperty -Name $oppKey -Value @($wr, $play, 0, 0, 0) -Force
                         }
                     }
 
                     if (-not $champRankObj.'1') {
-                        $champRankObj | Add-Member -MemberType NoteProperty -Name '1' -Value $compactArr
+                        $champRankObj | Add-Member -MemberType NoteProperty -Name '1' -Value $roleDict
                     } else {
-                        $champRankObj.'1' = $compactArr
+                        $champRankObj.'1' = $roleDict
                     }
                 }
             } catch {
