@@ -1,6 +1,7 @@
 # LoL Matchup Analyzer - Background Data Updater (OP.GG API)
 param(
-    [string]$Root = $PSScriptRoot
+    [string]$Root = $PSScriptRoot,
+    [switch]$DryRun
 )
 
 if (-not $Root) {
@@ -109,13 +110,22 @@ try {
 
     $jsonOut = $cache | ConvertTo-Json -Depth 10 -Compress
     if ($cache.PSObject.Properties.Count -gt 0 -and $jsonOut.Length -gt 1000) {
-        [System.IO.File]::WriteAllText($tmpCachePath, $jsonOut, [System.Text.Encoding]::UTF8)
-        if (Test-Path $tmpCachePath) {
-            Move-Item -Path $tmpCachePath -Destination $cachePath -Force
+        if ($DryRun) {
+            $testPath = Join-Path $Root "test_opgg_matchups.json"
+            [System.IO.File]::WriteAllText($testPath, $jsonOut, [System.Text.Encoding]::UTF8)
+            Write-Host "DRY-RUN SUCCESS! Champions fetched: $($cache.PSObject.Properties.Count), JSON size: $($jsonOut.Length) bytes -> saved to $testPath (main files untouched)."
+        } else {
+            [System.IO.File]::WriteAllText($tmpCachePath, $jsonOut, [System.Text.Encoding]::UTF8)
+            if (Test-Path $tmpCachePath) {
+                Move-Item -Path $tmpCachePath -Destination $cachePath -Force
+            }
+            Write-Status -Status "completed" -Percent 100 -Current "" -Done $total -Total $total -Message "Aggiornamento completato con successo! Tutti i dati sono sincronizzati."
         }
-        Write-Status -Status "completed" -Percent 100 -Current "" -Done $total -Total $total -Message "Aggiornamento completato con successo! Tutti i dati sono sincronizzati."
     } else {
-        Write-Status -Status "error" -Percent 0 -Current "" -Done 0 -Total 0 -Message "Aggiornamento annullato: dati scaricati vuoti. Mantenuto il backup precedente."
+        Write-Host "DRY-RUN/UPDATE ABORTED: empty data."
+        if (-not $DryRun) {
+            Write-Status -Status "error" -Percent 0 -Current "" -Done 0 -Total 0 -Message "Aggiornamento annullato: dati scaricati vuoti. Mantenuto il backup precedente."
+        }
     }
 } catch {
     Write-Status -Status "error" -Percent 0 -Current "" -Done 0 -Total 0 -Message "Errore durante l'aggiornamento: $_"
