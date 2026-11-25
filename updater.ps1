@@ -108,13 +108,15 @@ try {
     Write-Status -Status "running" -Percent 96 -Current "Salvataggio" -Done $total -Total $total -Message "Scrittura sicura su disco della cache aggiornata..."
 
     $jsonOut = $cache | ConvertTo-Json -Depth 10 -Compress
-    [System.IO.File]::WriteAllText($tmpCachePath, $jsonOut, [System.Text.Encoding]::UTF8)
-
-    if (Test-Path $tmpCachePath) {
-        Move-Item -Path $tmpCachePath -Destination $cachePath -Force
+    if ($cache.PSObject.Properties.Count -gt 0 -and $jsonOut.Length -gt 1000) {
+        [System.IO.File]::WriteAllText($tmpCachePath, $jsonOut, [System.Text.Encoding]::UTF8)
+        if (Test-Path $tmpCachePath) {
+            Move-Item -Path $tmpCachePath -Destination $cachePath -Force
+        }
+        Write-Status -Status "completed" -Percent 100 -Current "" -Done $total -Total $total -Message "Aggiornamento completato con successo! Tutti i dati sono sincronizzati."
+    } else {
+        Write-Status -Status "error" -Percent 0 -Current "" -Done 0 -Total 0 -Message "Aggiornamento annullato: dati scaricati vuoti. Mantenuto il backup precedente."
     }
-
-    Write-Status -Status "completed" -Percent 100 -Current "" -Done $total -Total $total -Message "Aggiornamento completato con successo! Tutti i dati sono sincronizzati."
 } catch {
     Write-Status -Status "error" -Percent 0 -Current "" -Done 0 -Total 0 -Message "Errore durante l'aggiornamento: $_"
 }
