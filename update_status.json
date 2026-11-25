@@ -1,9 +1,1 @@
-﻿{
-    "current":  "",
-    "message":  "Errore durante l\u0027aggiornamento: Cannot find path \u0027D:\\a\\LOL-ChampionPoolAnalizer\\LOL-ChampionPoolAnalizer\\matchups_lane_compact.tmp.json\u0027 because it does not exist.",
-    "timestamp":  1795564681,
-    "total":  0,
-    "done":  0,
-    "percent":  0,
-    "status":  "error"
-}
+﻿{"current":"","message":"Aggiornamento completato con successo! Tutti i dati sono sincronizzati.","timestamp":1795569205,"total":51,"done":51,"percent":100,"status":"completed"}

@@ -1,4 +1,4 @@
-# LoL Matchup Analyzer - Background Data Updater
+# LoL Matchup Analyzer - Background Data Updater (OP.GG API)
 param(
     [string]$Root = $PSScriptRoot
 )
@@ -28,15 +28,14 @@ function Write-Status {
         done = $Done
         total = $Total
         message = $Message
-        timestamp = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+        timestamp = [int][double]::Parse((Get-Date -UFormat %s))
     }
-    try {
-        [System.IO.File]::WriteAllText($statusFile, ($obj | ConvertTo-Json), [System.Text.Encoding]::UTF8)
-    } catch {}
+    $json = $obj | ConvertTo-Json -Compress
+    [System.IO.File]::WriteAllText($statusFile, $json, [System.Text.Encoding]::UTF8)
 }
 
 try {
-    Write-Status -Status "running" -Percent 0 -Current "" -Done 0 -Total 59 -Message "Inizializzazione job di aggiornamento..."
+    Write-Status -Status "running" -Percent 0 -Current "" -Done 0 -Total 51 -Message "Inizializzazione job di aggiornamento..."
 
     if (-not (Test-Path $metaPath)) {
         throw "bundled_meta.json non trovato"
@@ -45,85 +44,75 @@ try {
     $topChamps = $meta.roles.top
     $total = $topChamps.Count
 
-    # Load existing cache or create fresh
-    if (Test-Path $cachePath) {
-        $cache = Get-Content $cachePath -Raw | ConvertFrom-Json
-    } else {
-        $cache = New-Object PSObject
+    $cache = New-Object PSObject
+    $headers = @{ "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" }
+    $rankMap = @{
+        "17" = "emerald_plus"
+        "11" = "diamond_plus"
+        "12" = "master_plus"
+        "10" = "platinum_plus"
+        "8"  = "all"
     }
 
-    $ranks = @('17', '11', '12', '10', '8')
-    $headers = @{ 'User-Agent' = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
-
     $done = 0
-    foreach ($c in $topChamps) {
-        $key = [string]$c.key
-        $name = $c.name
-        $pct = [int][math]::Floor(($done / $total) * 95) # 0 to 95% during fetch
+    foreach ($key in $topChamps) {
+        $keyStr = [string]$key
+        $cInfo = $meta.champions.$keyStr
+        $name = if ($cInfo) { $cInfo.name } else { $keyStr }
+        $pct = [int][math]::Floor(($done / $total) * 95)
 
         Write-Status -Status "running" -Percent $pct -Current $name -Done $done -Total $total -Message "Scaricamento dati per $name ($($done + 1)/$total)..."
 
-        $url = "https://stats2.u.gg/lol/1.5/matchups/16_23/ranked_solo_5x5/$key/1.5.0.json"
-        try {
-            $res = Invoke-RestMethod -Uri $url -Headers $headers -TimeoutSec 10
-            if (-not $cache.$key) {
-                $cache | Add-Member -MemberType NoteProperty -Name $key -Value (New-Object PSObject)
-            }
-            $champObj = $cache.$key
+        if (-not $cache.$keyStr) {
+            $cache | Add-Member -MemberType NoteProperty -Name $keyStr -Value (New-Object PSObject)
+        }
+        $champObj = $cache.$keyStr
 
-            if ($res.'12') {
-                $worldData = $res.'12'
-                foreach ($rankId in $ranks) {
-                    if ($worldData.$rankId) {
-                        $rankData = $worldData.$rankId
-                        if (-not $champObj.$rankId) {
-                            $champObj | Add-Member -MemberType NoteProperty -Name $rankId -Value (New-Object PSObject)
-                        }
-                        $champRankObj = $champObj.$rankId
+        # Fetch Emerald+ (17) by default for fast & reliable updates
+        foreach ($rankId in @("17", "11", "12")) {
+            $tier = $rankMap[$rankId]
+            $url = "https://lol-api-champion.op.gg/api/global/champions/ranked/$keyStr/matchups?tier=$tier&position=top"
+            try {
+                $res = Invoke-RestMethod -Uri $url -Headers $headers -TimeoutSec 10
+                if ($res.data -and $res.data.counters) {
+                    if (-not $champObj.$rankId) {
+                        $champObj | Add-Member -MemberType NoteProperty -Name $rankId -Value (New-Object PSObject)
+                    }
+                    $champRankObj = $champObj.$rankId
 
-                        foreach ($roleId in @('1','2','3','4','5')) {
-                            if ($rankData.$roleId -and $rankData.$roleId[0]) {
-                                $tuples = $rankData.$roleId[0]
-                                if (-not $champRankObj.$roleId) {
-                                    $champRankObj | Add-Member -MemberType NoteProperty -Name $roleId -Value (New-Object PSObject)
-                                }
-                                $roleDict = $champRankObj.$roleId
-
-                                foreach ($t in $tuples) {
-                                    $enemyId = [string]$t[0]
-                                    $enemyWins = [double]$t[1]
-                                    $matches = [int]$t[2]
-                                    if ($matches -gt 0) {
-                                        $myWr = [math]::Round((( ($matches - $enemyWins) / $matches ) * 100.0), 2)
-                                        $goldDiff = [int]$t[4]
-                                        $csDiff = [double]$t[6]
-                                        $xpDiff = [int]$t[3]
-                                        $arr = @($myWr, $matches, $goldDiff, $csDiff, $xpDiff)
-                                        if ($roleDict.$enemyId) {
-                                            $roleDict.$enemyId = $arr
-                                        } else {
-                                            $roleDict | Add-Member -MemberType NoteProperty -Name $enemyId -Value $arr
-                                        }
-                                    }
-                                }
-                            }
+                    $compactArr = @()
+                    foreach ($m in $res.data.counters) {
+                        $play = [int]$m.play
+                        $win = [int]$m.win
+                        if ($play -gt 0) {
+                            $wr = [math]::Round(($win / $play) * 100.0, 2)
+                            $compactArr += ,@([int]$m.champion_id, $wr, $play, 0, 0, 0)
                         }
                     }
+
+                    if (-not $champRankObj.'1') {
+                        $champRankObj | Add-Member -MemberType NoteProperty -Name '1' -Value $compactArr
+                    } else {
+                        $champRankObj.'1' = $compactArr
+                    }
                 }
+            } catch {
+                Write-Warning "Could not fetch $name ($tier): $_"
             }
-        } catch {
-            Write-Warning ("Could not fetch " + $name + ": " + $_)
         }
 
         $done++
+        Start-Sleep -Milliseconds 100
     }
 
-    # Save to temporary file first (atomicity: data is changed only once the job finishes)
-    Write-Status -Status "running" -Percent 96 -Current "" -Done $done -Total $total -Message "Salvataggio e consolidamento database..."
-    $cache | ConvertTo-Json -Depth 10 -Compress | Set-Content $tmpCachePath -Encoding utf8
+    Write-Status -Status "running" -Percent 96 -Current "Salvataggio" -Done $total -Total $total -Message "Scrittura sicura su disco della cache aggiornata..."
 
-    # Atomic swap: rename tmp to real cache file
-    Move-Item -Path $tmpCachePath -Destination $cachePath -Force
+    $jsonOut = $cache | ConvertTo-Json -Depth 10 -Compress
+    [System.IO.File]::WriteAllText($tmpCachePath, $jsonOut, [System.Text.Encoding]::UTF8)
+
+    if (Test-Path $tmpCachePath) {
+        Move-Item -Path $tmpCachePath -Destination $cachePath -Force
+    }
 
     Write-Status -Status "completed" -Percent 100 -Current "" -Done $total -Total $total -Message "Aggiornamento completato con successo! Tutti i dati sono sincronizzati."
 } catch {
