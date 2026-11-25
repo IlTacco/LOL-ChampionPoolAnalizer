@@ -54,57 +54,74 @@ try {
         "10" = "platinum_plus"
         "8"  = "all"
     }
+    $roleDefs = @(
+        @{ name = "top";    code = "4"; opPos = "top" },
+        @{ name = "jungle"; code = "1"; opPos = "jungle" },
+        @{ name = "mid";    code = "5"; opPos = "mid" },
+        @{ name = "adc";    code = "3"; opPos = "adc" },
+        @{ name = "supp";   code = "2"; opPos = "support" }
+    )
+
+    $total = 0
+    foreach ($rd in $roleDefs) {
+        $rName = $rd.name
+        if ($meta.roles.$rName) { $total += $meta.roles.$rName.Count }
+    }
 
     $done = 0
-    foreach ($key in $topChamps) {
-        $keyStr = if ($key.key) { [string]$key.key } else { [string]$key }
-        $cInfo = $meta.champions.$keyStr
-        $name = if ($cInfo) { $cInfo.name } else { $keyStr }
-        $pct = [int][math]::Floor(($done / $total) * 95)
+    foreach ($rd in $roleDefs) {
+        $rName = $rd.name
+        $rCode = $rd.code
+        $opPos = $rd.opPos
+        $roleChamps = $meta.roles.$rName
+        if (-not $roleChamps) { continue }
 
-        Write-Status -Status "running" -Percent $pct -Current $name -Done $done -Total $total -Message "Scaricamento dati per $name ($($done + 1)/$total)..."
+        foreach ($key in $roleChamps) {
+            $keyStr = if ($key.key) { [string]$key.key } else { [string]$key }
+            $cInfo = $meta.champions.$keyStr
+            $name = if ($cInfo) { $cInfo.name } else { $keyStr }
+            $pct = [int][math]::Floor(($done / [Math]::Max(1, $total)) * 95)
 
-        if (-not $cache.$keyStr) {
-            $cache | Add-Member -MemberType NoteProperty -Name $keyStr -Value (New-Object PSObject)
-        }
-        $champObj = $cache.$keyStr
+            Write-Status -Status "running" -Percent $pct -Current $name -Done $done -Total $total -Message "Scaricamento dati per $name ($rName) ($($done + 1)/$total)..."
 
-        # Fetch Emerald+ (17) by default for fast & reliable updates
-        foreach ($rankId in @("17", "11", "12")) {
-            $tier = $rankMap[$rankId]
-            $url = "https://lol-api-champion.op.gg/api/global/champions/ranked/$keyStr/matchups?tier=$tier&position=top"
-            try {
-                $res = Invoke-RestMethod -Uri $url -Headers $headers -TimeoutSec 10
-                if ($res.data -and $res.data.counters) {
-                    if (-not $champObj.$rankId) {
-                        $champObj | Add-Member -MemberType NoteProperty -Name $rankId -Value (New-Object PSObject)
-                    }
-                    $champRankObj = $champObj.$rankId
-
-                    $roleDict = New-Object PSObject
-                    foreach ($m in $res.data.counters) {
-                        $play = [int]$m.play
-                        $win = [int]$m.win
-                        if ($play -gt 0) {
-                            $wr = [math]::Round(($win / $play) * 100.0, 2)
-                            $oppKey = [string]$m.champion_id
-                            $roleDict | Add-Member -MemberType NoteProperty -Name $oppKey -Value @($wr, $play, 0, 0, 0) -Force
-                        }
-                    }
-
-                    if (-not $champRankObj.'1') {
-                        $champRankObj | Add-Member -MemberType NoteProperty -Name '1' -Value $roleDict
-                    } else {
-                        $champRankObj.'1' = $roleDict
-                    }
-                }
-            } catch {
-                Write-Warning "Could not fetch $name ($tier): $_"
+            if (-not $cache.$keyStr) {
+                $cache | Add-Member -MemberType NoteProperty -Name $keyStr -Value (New-Object PSObject)
             }
-        }
+            $champObj = $cache.$keyStr
 
-        $done++
-        Start-Sleep -Milliseconds 100
+            # Fetch Emerald+ (17), Diamond+ (11), Master+ (12)
+            foreach ($rankId in @("17", "11", "12")) {
+                $tier = $rankMap[$rankId]
+                $url = "https://lol-api-champion.op.gg/api/global/champions/ranked/$keyStr/matchups?tier=$tier&position=$opPos"
+                try {
+                    $res = Invoke-RestMethod -Uri $url -Headers $headers -TimeoutSec 10
+                    if ($res.data -and $res.data.counters) {
+                        if (-not $champObj.$rankId) {
+                            $champObj | Add-Member -MemberType NoteProperty -Name $rankId -Value (New-Object PSObject)
+                        }
+                        $champRankObj = $champObj.$rankId
+
+                        $roleDict = New-Object PSObject
+                        foreach ($m in $res.data.counters) {
+                            $play = [int]$m.play
+                            $win = [int]$m.win
+                            if ($play -gt 0) {
+                                $wr = [math]::Round(($win / $play) * 100.0, 2)
+                                $oppKey = [string]$m.champion_id
+                                $roleDict | Add-Member -MemberType NoteProperty -Name $oppKey -Value @($wr, $play, 0, 0, 0) -Force
+                            }
+                        }
+
+                        $champRankObj | Add-Member -MemberType NoteProperty -Name $rCode -Value $roleDict -Force
+                    }
+                } catch {
+                    Write-Warning "Could not fetch $name ($rName / $tier): $_"
+                }
+            }
+
+            $done++
+            Start-Sleep -Milliseconds 60
+        }
     }
 
     Write-Status -Status "running" -Percent 96 -Current "Salvataggio" -Done $total -Total $total -Message "Scrittura sicura su disco della cache aggiornata..."
