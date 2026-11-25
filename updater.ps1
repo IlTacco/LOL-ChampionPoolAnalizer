@@ -57,7 +57,7 @@ try {
 
     $done = 0
     foreach ($key in $topChamps) {
-        $keyStr = [string]$key
+        $keyStr = if ($key.key) { [string]$key.key } else { [string]$key }
         $cInfo = $meta.champions.$keyStr
         $name = if ($cInfo) { $cInfo.name } else { $keyStr }
         $pct = [int][math]::Floor(($done / $total) * 95)
