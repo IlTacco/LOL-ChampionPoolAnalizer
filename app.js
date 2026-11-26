@@ -687,6 +687,7 @@ class App {
     }
 
     this.dom.counterModal.style.display = 'flex';
+    this.dom.counterModalList.scrollTop = 0;
   }
 
   closeCounterModal() {

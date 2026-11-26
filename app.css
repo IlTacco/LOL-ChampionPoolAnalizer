@@ -1939,3 +1939,22 @@ body {
   color: var(--text-primary);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
+
+/* Counter Modal Scrollbar */
+.counter-modal-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.counter-modal-list::-webkit-scrollbar-track {
+  background: #14171d;
+  border-radius: 4px;
+}
+
+.counter-modal-list::-webkit-scrollbar-thumb {
+  background: #2f3644;
+  border-radius: 4px;
+}
+
+.counter-modal-list::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
