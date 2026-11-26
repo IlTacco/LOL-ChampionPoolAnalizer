@@ -143,7 +143,13 @@ class App {
       adminConfirmPwdInput: document.getElementById('adminConfirmPwdInput'),
       adminChangePwdError: document.getElementById('adminChangePwdError'),
       btnBackToLoginView: document.getElementById('btnBackToLoginView'),
-      btnSubmitChangePwd: document.getElementById('btnSubmitChangePwd')
+      btnSubmitChangePwd: document.getElementById('btnSubmitChangePwd'),
+      counterModal: document.getElementById('counterModal'),
+      counterModalBackdrop: document.getElementById('counterModalBackdrop'),
+      counterModalCloseBtn: document.getElementById('counterModalCloseBtn'),
+      counterModalImg: document.getElementById('counterModalImg'),
+      counterModalTitle: document.getElementById('counterModalTitle'),
+      counterModalList: document.getElementById('counterModalList')
     };
   }
 
@@ -353,6 +359,14 @@ class App {
       });
     }
 
+    // Counter modal controls
+    if (this.dom.counterModalCloseBtn) {
+      this.dom.counterModalCloseBtn.addEventListener('click', () => this.closeCounterModal());
+    }
+    if (this.dom.counterModalBackdrop) {
+      this.dom.counterModalBackdrop.addEventListener('click', () => this.closeCounterModal());
+    }
+
     // Admin modal controls
     if (this.dom.adminModalCloseBtn) {
       this.dom.adminModalCloseBtn.addEventListener('click', () => this.closeAdminModal());
@@ -443,7 +457,9 @@ class App {
 
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        if (this.dom.adminModal && this.dom.adminModal.style.display !== 'none') {
+        if (this.dom.counterModal && this.dom.counterModal.style.display !== 'none') {
+          this.closeCounterModal();
+        } else if (this.dom.adminModal && this.dom.adminModal.style.display !== 'none') {
           this.closeAdminModal();
         } else if (this.dom.tutorialOverlay && this.dom.tutorialOverlay.style.display !== 'none') {
           this.closeTutorial();
@@ -611,6 +627,72 @@ class App {
     try {
       localStorage.setItem('lol_admin_pwd', newPwd);
     } catch (e) {}
+  }
+
+  openCounterModal(enemyKey) {
+    const enemy = this.dataService.getChampionRoleMeta(enemyKey, this.currentRole);
+    if (!enemy || !this.dom.counterModal) return;
+
+    this.dom.counterModalImg.src = this.dataService.getChampionImageUrl(enemy.image);
+    this.dom.counterModalImg.alt = enemy.name;
+    this.dom.counterModalTitle.textContent = this.currentLang === 'en'
+      ? `Best Counters vs ${enemy.name}`
+      : `Migliori Counter vs ${enemy.name}`;
+
+    const roleChamps = this.dataService.getRoleChampions(this.currentRole);
+    const counters = [];
+
+    for (const champ of roleChamps) {
+      if (String(champ.key) === String(enemyKey)) continue;
+      const m = this.engine.getMatchup(champ.key, enemyKey, this.currentRole, this.currentRank);
+      if (m && m.winrate > 0) {
+        counters.push({
+          champion: champ,
+          winrate: m.winrate,
+          matches: m.matches || 0
+        });
+      }
+    }
+
+    counters.sort((a, b) => b.winrate - a.winrate);
+    const topCounters = counters.slice(0, 15);
+
+    if (topCounters.length === 0) {
+      this.dom.counterModalList.innerHTML = `<div style="padding: 16px; text-align: center; color: #94a3b8; font-size: 13px;">${this.currentLang === 'en' ? 'No counter data available.' : 'Nessun dato counter disponibile.'}</div>`;
+    } else {
+      this.dom.counterModalList.innerHTML = topCounters.map((c, idx) => {
+        const isWin = c.winrate >= 50.0;
+        const wrColor = isWin ? '#4ade80' : '#f87171';
+        const inPool = this.userPool.includes(String(c.champion.key));
+        const poolBadge = inPool
+          ? `<span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);">Nel Pool</span>`
+          : '';
+        return `
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: #14171d; border: 1px solid #262b36; border-radius: 6px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="width: 18px; font-size: 11px; color: #64748b; font-weight: 700;">#${idx + 1}</span>
+              <img src="${this.dataService.getChampionImageUrl(c.champion.image)}" alt="${c.champion.name}" style="width: 28px; height: 28px; border-radius: 50%; border: 1px solid #334155;">
+              <div>
+                <div style="font-size: 13px; font-weight: 600; color: #e2e8f0; display: flex; align-items: center; gap: 6px;">
+                  ${c.champion.name}
+                  ${poolBadge}
+                </div>
+                <div style="font-size: 11px; color: #64748b;">${c.matches.toLocaleString()} ${this.currentLang === 'en' ? 'matches' : 'partite'}</div>
+              </div>
+            </div>
+            <div style="font-size: 13px; font-weight: 700; color: ${wrColor};">${c.winrate.toFixed(2)}%</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    this.dom.counterModal.style.display = 'flex';
+  }
+
+  closeCounterModal() {
+    if (this.dom.counterModal) {
+      this.dom.counterModal.style.display = 'none';
+    }
   }
 
   openAdminModal() {
@@ -1412,6 +1494,9 @@ class App {
 
       let tdOpponent = document.createElement('td');
       tdOpponent.className = 'opponent-cell';
+      tdOpponent.style.cursor = 'pointer';
+      tdOpponent.title = this.currentLang === 'en' ? `Click to see best counters vs ${enemy.name}` : `Clicca per vedere i migliori counter contro ${enemy.name}`;
+      tdOpponent.addEventListener('click', () => this.openCounterModal(enemy.key));
       tdOpponent.style.cursor = 'pointer';
       tdOpponent.title = `Clicca per selezionare ${enemy.name} in Quick Pick`;
       tdOpponent.innerHTML = `
