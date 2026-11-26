@@ -89,8 +89,8 @@ try {
             }
             $champObj = $cache.$keyStr
 
-            # Fetch Emerald+ (17), Diamond+ (11), Master+ (12)
-            foreach ($rankId in @("17", "11", "12")) {
+            # Fetch all ranks: Emerald+ (17), Diamond+ (11), Master+ (12), Platinum+ (10), Overall (8)
+            foreach ($rankId in @("17", "11", "12", "10", "8")) {
                 $tier = $rankMap[$rankId]
                 $url = "https://lol-api-champion.op.gg/api/global/champions/ranked/$keyStr/matchups?tier=$tier&position=$opPos"
                 try {
