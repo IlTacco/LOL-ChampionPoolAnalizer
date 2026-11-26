@@ -1497,8 +1497,6 @@ class App {
       tdOpponent.style.cursor = 'pointer';
       tdOpponent.title = this.currentLang === 'en' ? `Click to see best counters vs ${enemy.name}` : `Clicca per vedere i migliori counter contro ${enemy.name}`;
       tdOpponent.addEventListener('click', () => this.openCounterModal(enemy.key));
-      tdOpponent.style.cursor = 'pointer';
-      tdOpponent.title = `Clicca per selezionare ${enemy.name} in Quick Pick`;
       tdOpponent.innerHTML = `
         <div class="opponent-info">
           <div class="opponent-main">
@@ -1514,12 +1512,6 @@ class App {
           <div>${bestPicksHtml}</div>
         </div>
       `;
-
-      // Clicking opponent cell triggers Quick Pick
-      tdOpponent.addEventListener('click', () => {
-        this.dom.quickPickInput.value = enemy.name;
-        this.handleQuickPick(enemy.name);
-      });
 
       tr.appendChild(tdOpponent);
 
