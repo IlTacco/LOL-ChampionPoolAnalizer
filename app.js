@@ -644,7 +644,7 @@ class App {
 
     for (const champ of roleChamps) {
       if (String(champ.key) === String(enemyKey)) continue;
-      const m = this.engine.getMatchup(champ.key, enemyKey, this.currentRole, this.currentRank);
+      const m = this.engine.getMatchupStats(champ.key, enemyKey, this.currentRole, this.currentRank);
       if (m && m.winrate > 0) {
         counters.push({
           champion: champ,
